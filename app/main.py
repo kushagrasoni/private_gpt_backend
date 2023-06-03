@@ -22,13 +22,18 @@ api.add_middleware(
 )
 
 
-@api.get("/run_model/")
+@api.get("/")
+async def main():
+    return {"Status": "OK"}
+
+
+@api.get("/run_model")
 async def initiate_model():
     run_status = run_model()
     return {"Status": run_status}
 
 
-@api.get("/pvt_gpt/")
+@api.get("/pvt_gpt")
 async def pvt_gpt_response(query: str):
     # Your chatbot logic here
     response = pvt_gpt_generate_response(query)
