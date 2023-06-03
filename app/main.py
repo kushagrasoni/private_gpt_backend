@@ -1,6 +1,9 @@
+import json
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+from gpt.CGIPrivateGPT import run_model, execute
 
 api = FastAPI()
 
@@ -21,6 +24,12 @@ api.add_middleware(
 )
 
 
+@api.get("/run_model/")
+async def initiate_model():
+    run_status = run_model()
+    return {"Status": run_status}
+
+
 @api.get("/pvt_gpt/")
 async def pvt_gpt_response(query: str):
     # Your chatbot logic here
@@ -31,12 +40,14 @@ async def pvt_gpt_response(query: str):
 def pvt_gpt_generate_response(query: str):
     # Add your chatbot logic to generate a response based on the query
     # Here's a simple example that echoes the query as the response
-    return query
+    response = execute(query)
+    return response
 
 
 if __name__ == "__main__":
     uvicorn.run(app="app.main:api",
                 host="0.0.0.0",
                 port=5000,
-                reload=True
+                reload=True,
+                workers=1
                 )
