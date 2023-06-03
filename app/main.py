@@ -62,7 +62,7 @@ async def train_chatbot():
     return "Model Trained"
 
 
-@api.get("/pvt_gpt/")
+@api.get("/pvt_gpt")
 async def pvt_gpt_response(query: str):
     response = chatbot.get_response(query)
     if not response:
