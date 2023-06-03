@@ -1,9 +1,12 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from gpt.CGIPrivateGPT import run_model, execute
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException, status
+from chatterbot import ChatBot
+from chatterbot.trainers import ChatterBotCorpusTrainer, ListTrainer
+import spacy
 
 api = FastAPI()
+
 
 # Define allowed origins
 origins = [
@@ -22,24 +25,55 @@ api.add_middleware(
 )
 
 
-@api.get("/run_model/")
-async def initiate_model():
-    run_status = run_model()
-    return {"Status": run_status}
+
+# Load the spaCy language model
+nlp = spacy.load('en_core_web_sm')
+
+
+# Create a new ChatBot instance
+chatbot = ChatBot('My ChatBot')
+
+# # Create a new trainer for the ChatBot
+# trainer = ListTrainer(chatbot)
+#
+# # Define a list of conversation examples to train the chatbot
+# conversation_examples = [
+#     'Hello',
+#     'Hi there!',
+#     'How are you?',
+#     'I am good.',
+#     'That is good to hear.',
+#     'Thank you',
+#     'You\'re welcome.'
+# ]
+#
+# # Train the ChatBot on the list of conversation examples
+# trainer.train(conversation_examples)
+
+
+@api.get("/train_chatbot")
+async def train_chatbot():
+    # Create a new trainer for the ChatBot
+    trainer = ChatterBotCorpusTrainer(chatbot)
+
+    # Train the ChatBot on a corpus of data
+    trainer.train('chatterbot.corpus.english')
+
+    return "Model Trained"
 
 
 @api.get("/pvt_gpt/")
 async def pvt_gpt_response(query: str):
-    # Your chatbot logic here
-    response = pvt_gpt_generate_response(query)
-    return {"reply": response}
+    response = chatbot.get_response(query)
+    if not response:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to generate response"
+        )
+    return {"reply": response.text}
 
 
-def pvt_gpt_generate_response(query: str):
-    # Add your chatbot logic to generate a response based on the query
-    # Here's a simple example that echoes the query as the response
-    response = execute(query)
-    return response
+# Other code...
 
 
 if __name__ == "__main__":
