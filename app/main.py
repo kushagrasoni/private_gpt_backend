@@ -22,6 +22,8 @@ api.add_middleware(
 )
 
 
+global knowledge_base, system_prompt, tokenizer, model_4bit, device
+
 @api.get("/")
 async def main():
     return {"Status": "OK"}
@@ -29,8 +31,9 @@ async def main():
 
 @api.get("/run_model")
 async def initiate_model():
-    run_status = run_model()
-    return {"Status": run_status}
+    global knowledge_base, system_prompt, tokenizer, model_4bit, device
+    knowledge_base, system_prompt, tokenizer, model_4bit, device = run_model()
+    return {"Status": True}
 
 
 @api.get("/pvt_gpt")
@@ -41,9 +44,10 @@ async def pvt_gpt_response(query: str):
 
 
 def pvt_gpt_generate_response(query: str):
+    global knowledge_base, system_prompt, tokenizer, model_4bit, device
     # Add your chatbot logic to generate a response based on the query
     # Here's a simple example that echoes the query as the response
-    response = execute(query)
+    response = execute(query, knowledge_base, system_prompt, tokenizer, model_4bit, device)
     return response
 
 

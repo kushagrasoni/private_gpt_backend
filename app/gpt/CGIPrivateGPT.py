@@ -14,16 +14,13 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 # Insert the directory
 root_dir = "./app/gpt"
 
-global knowledge_base, system_prompt, tokenizer, model_4bit
-
 
 def run_model():
-    global knowledge_base
     print("Run Model")
     # defines for document reading and KnowledgeBase
     langchain.verbose = False
     embedding_model_name = "all-MiniLM-L6-v2"
-    model_kwargs = {'device': 'gpu'}
+    model_kwargs = {'device': 'cuda'}
     chunk_size = 500
     chunk_overlap = 50
 
@@ -84,7 +81,7 @@ def run_model():
         bnb_4bit_quant_type="nf4",
         bnb_4bit_compute_dtype=torch.bfloat16
     )
-    device = "gpu"
+    device = "cuda:0"
 
     # tokenizer load
     tokenizer = AutoTokenizer.from_pretrained(model_id)
@@ -94,7 +91,7 @@ def run_model():
     # system_prompt="Please analyze below context and give short and precise answer. \n Context : \n"
 
     system_prompt = "Please analyze below context and give detailed answer. \n Context : \n"
-    return True
+    return knowledge_base, system_prompt, tokenizer, model_4bit, device
 
 
 # extract the actual answer from the generated text.
@@ -118,8 +115,7 @@ def extract_reply(s):
     # return s
 
 
-def execute(user_input):
-    global knowledge_base, system_prompt, tokenizer, model_4bit
+def execute(user_input, knowledge_base, system_prompt, tokenizer, model_4bit, device):
     print('extract_reply')
     # get the context from knowledgebase..
     docs = knowledge_base.similarity_search(user_input, k=3)
