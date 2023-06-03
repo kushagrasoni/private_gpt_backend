@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from gpt.CGIPrivateGPT import run_model, execute
+from app.gpt.CGIPrivateGPT import run_model, execute
 
 api = FastAPI()
 
