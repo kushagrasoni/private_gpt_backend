@@ -14,8 +14,11 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 # Insert the directory
 root_dir = "./app/gpt"
 
+global knowledge_base, system_prompt, tokenizer, model_4bit
+
 
 def run_model():
+    global knowledge_base
     print("Run Model")
     # defines for document reading and KnowledgeBase
     langchain.verbose = False
@@ -116,6 +119,7 @@ def extract_reply(s):
 
 
 def execute(user_input):
+    global knowledge_base, system_prompt, tokenizer, model_4bit
     print('extract_reply')
     # get the context from knowledgebase..
     docs = knowledge_base.similarity_search(user_input, k=3)
