@@ -9,6 +9,8 @@ api = FastAPI()
 origins = [
     "http://localhost",
     "http://localhost:3000",
+    "http://54.167.71.250:3000"
+    "http://54.167.71.250"
     # Add more allowed origins as needed
 ]
 
