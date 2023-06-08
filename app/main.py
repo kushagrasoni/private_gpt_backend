@@ -6,24 +6,26 @@ from app.gpt.CGIPrivateGPT import run_model, execute
 api = FastAPI(timeout=1200)
 
 # Define allowed origins
-origins = [
-    "http://localhost",
-    "http://0.0.0.0",
-    "http://localhost:3000",
-    "http://0.0.0.0:3000",
-    "http://54.167.71.250:3000"
-    "http://54.167.71.250",
-    "http://ec2-54-167-71-250.compute-1.amazonaws.com",
-    "http://172.31.21.244:3000"
-    # Add more allowed origins as needed
-]
+# origins = [
+#     "http://localhost",
+#     "http://0.0.0.0",
+#     "http://localhost:3000",
+#     "http://0.0.0.0:3000",
+#     "http://54.167.71.250:3000"
+#     "http://54.167.71.250",
+#     "http://ec2-54-167-71-250.compute-1.amazonaws.com",
+#     "http://172.31.21.244:3000"
+#     # Add more allowed origins as needed
+# ]
+
+origins = ["*"]
 
 # Configure CORS middleware
 api.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
