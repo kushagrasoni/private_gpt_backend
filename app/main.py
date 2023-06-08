@@ -45,6 +45,13 @@ async def pvt_gpt_response(query: str):
     return {"reply": response}
 
 
+@api.get("/pvt_gpt2")
+async def pvt_gpt_response(query: str):
+    # Your chatbot logic here
+    #response = pvt_gpt_generate_response(query)
+    return {"reply": query}
+
+
 def pvt_gpt_generate_response(query: str):
     global knowledge_base, system_prompt, tokenizer, model_4bit, device
     # Add your chatbot logic to generate a response based on the query
