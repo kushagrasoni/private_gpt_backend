@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from app.gpt.CGIPrivateGPT import run_model, execute
 
-api = FastAPI()
+api = FastAPI(timeout=1200)
 
 # Define allowed origins
 origins = [
