@@ -8,13 +8,13 @@ api = FastAPI(timeout=1200)
 # Define allowed origins
 origins = [
     "http://localhost",
-    "http://0.0.0.0",
+    "0.0.0.0",
     "http://localhost:3000",
-    "http://0.0.0.0:3000",
-    "http://54.167.71.250:3000"
-    "http://54.167.71.250",
+    "0.0.0.0:3000",
+    "54.167.71.250:3000"
+    "54.167.71.250",
     "http://ec2-54-167-71-250.compute-1.amazonaws.com",
-    "http://172.31.21.244:3000"
+    "172.31.21.244:3000"
     # Add more allowed origins as needed
 ]
 
