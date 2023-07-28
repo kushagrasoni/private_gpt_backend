@@ -91,6 +91,10 @@ def run_model():
     # system_prompt="Please analyze below context and give short and precise answer. \n Context : \n"
 
     system_prompt = "Please analyze below context and give detailed answer. \n Context : \n"
+
+    # Garbage collection around CUDA
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
     return knowledge_base, system_prompt, tokenizer, model_4bit, device
 
 
@@ -134,4 +138,8 @@ def execute(user_input, knowledge_base, system_prompt, tokenizer, model_4bit, de
 
     answer_message = extract_reply(generated_text)
     # answer_message = extract_reply(user_input)
+
+    # Garbage collection around CUDA
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
     return answer_message
