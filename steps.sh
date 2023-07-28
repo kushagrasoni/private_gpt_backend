@@ -11,3 +11,7 @@ python -m app.main
 # Execute backend model
 curl -v http://localhost:5000
 curl -v http://localhost:5000/run_model
+
+
+# Check MVIDIA GPU Status
+nvidia-smi

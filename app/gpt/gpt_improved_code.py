@@ -3,7 +3,9 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from langchain.vectorstores import Qdrant
 from langchain.embeddings import SentenceTransformerEmbeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
+from langchain.document_loaders import TextLoader, PyPDFLoader, UnstructuredEmailLoader, UnstructuredPowerPointLoader, \
+    Docx2txtLoader
 
 class DocumentLoader:
     SUPPORTED_EXTENSIONS = {
@@ -51,20 +53,25 @@ def run_model():
     # Embeddings for similarity search
     embeddings = SentenceTransformerEmbeddings(model_name=embedding_model_name)
 
-    # No need to load the language model here, do it on-demand during inference
+    # Create in-memory Qdrant instance
+    knowledge_base = Qdrant.from_documents(
+        docs,
+        embeddings,
+        location=":memory:",
+        collection_name="doc_chunks",
+    )
 
     system_prompt = "Please analyze below context and give detailed answer. \n Context : \n"
-    return docs, embeddings, system_prompt
+    return knowledge_base, docs, embeddings, system_prompt
 
 def extract_reply(s):
-    print('extract_reply')
     # Find the positions of the last occurrence of "<start>" and "<end>"
     start = "Answer:"
     end = "A:"
     start_pos = s.rfind(start) + len(start)
     end_pos = s.rfind(end)
     if end_pos < start_pos:
-        end_pos = s.rfind("<|endoftext|>")
+        end_pos = s.rfind("")
     if end_pos < start_pos:
         end_pos = len(s)
     # Extract the text between "<start>" and "<end>"
@@ -73,9 +80,8 @@ def extract_reply(s):
         return text
     else:
         return None
-    # return s
 
-def execute(user_input, knowledge_base, system_prompt, tokenizer, model_4bit):
+def execute(user_input, knowledge_base, docs, embeddings, system_prompt):
     # Load the language model only when needed during inference
     model_id = "EleutherAI/gpt-neox-20b"
     bnb_config = BitsAndBytesConfig(
@@ -91,10 +97,8 @@ def execute(user_input, knowledge_base, system_prompt, tokenizer, model_4bit):
     # actual model load..
     model_4bit = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb_config, device_map="auto")
 
-
-    print('extract_reply')
     # get the context from knowledgebase..
-    docs = knowledge_base.similarity_search(user_input, k=3)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     context = ""
     for doc in docs:
         if hasattr(doc, 'page_content'):
@@ -106,14 +110,22 @@ def execute(user_input, knowledge_base, system_prompt, tokenizer, model_4bit):
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
     # get the output from model
     outputs = model_4bit.generate(**inputs, max_new_tokens=128)
+    generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+    answer_message = extract_reply(generated_text)
+    # Garbage collection around CUDA
+    if torch.cuda.is_available():
+        print("GPU Garbage collection.....")
+        torch.cuda.empty_cache()
+    return answer_message
+
+if __name__ == "__main__":
+    knowledge_base, docs, embeddings, system_prompt = run_model()
+    user_input = "PNC Virtual Wallet Student"
+    answer_message = execute(user_input, knowledge_base, docs, embeddings, system_prompt)
 
     # Garbage collection around CUDA
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
-    generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-    answer_message = extract_reply(generated_text)
-    # answer_message = extract_reply(user_input)
-    return answer_message
-
+    print(answer_message)
