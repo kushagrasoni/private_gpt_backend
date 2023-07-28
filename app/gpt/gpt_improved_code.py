@@ -1,9 +1,15 @@
 import os
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+import sys
+
+import langchain
+from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import Qdrant
 from langchain.embeddings import SentenceTransformerEmbeddings
+from langchain.document_loaders import TextLoader, PyPDFLoader, UnstructuredEmailLoader, UnstructuredPowerPointLoader, \
+    Docx2txtLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
 class DocumentLoader:
     SUPPORTED_EXTENSIONS = {
