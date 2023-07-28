@@ -1,7 +1,6 @@
 import os
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-from sentence_transformers import SentenceTransformer, util
 from langchain.vectorstores import Qdrant
 from langchain.embeddings import SentenceTransformerEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -52,7 +51,7 @@ def run_model():
     docs = doc_loader.load_documents()
 
     # Embeddings for similarity search
-    embeddings = SentenceTransformer(embedding_model_name)
+    embeddings = SentenceTransformerEmbeddings(model_name=embedding_model_name)
 
     # Create in-memory Qdrant instance
     knowledge_base = Qdrant.from_documents(
@@ -66,18 +65,10 @@ def run_model():
     return knowledge_base, docs, embeddings, system_prompt
 
 def similarity_search(knowledge_base, user_input, k=3):
-    # Get the embeddings of the user input and context documents
-    user_input_embedding = embeddings.encode(user_input, convert_to_tensor=True)
-    context_embeddings = [embeddings.encode(doc.page_content, convert_to_tensor=True) for doc in docs]
+    # Perform similarity search using the knowledge_base
+    results = knowledge_base.similarity_search(user_input, k=3)
 
-    # Calculate cosine similarity between the user input and context documents
-    similarities = util.pytorch_cos_sim(user_input_embedding, torch.stack(context_embeddings)).flatten()
-
-    # Get the top-k similar documents
-    top_k_indices = similarities.argsort(descending=True)[:k]
-    top_k_documents = [docs[i] for i in top_k_indices]
-
-    return top_k_documents
+    return results
 
 def extract_reply(s):
     # Find the positions of the last occurrence of "<start>" and "<end>"
