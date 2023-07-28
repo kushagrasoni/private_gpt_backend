@@ -81,7 +81,8 @@ def extract_reply(s):
     else:
         return None
 
-def execute(user_input, knowledge_base, docs, embeddings, system_prompt):
+
+def execute(user_input, docs, embeddings, system_prompt, batch_size=4, gradient_accumulation_steps=4):
     # Load the language model only when needed during inference
     model_id = "EleutherAI/gpt-neox-20b"
     bnb_config = BitsAndBytesConfig(
@@ -96,6 +97,8 @@ def execute(user_input, knowledge_base, docs, embeddings, system_prompt):
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     # actual model load..
     model_4bit = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb_config, device_map="auto")
+    model_4bit.to(device)
+    model_4bit.eval()
 
     # get the context from knowledgebase..
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
@@ -108,16 +111,71 @@ def execute(user_input, knowledge_base, docs, embeddings, system_prompt):
     # create prompt including context and user input..
     prompt = f"{system_prompt} " + context + "\n ------ \n Question: \n" + user_input + "\n Answer:"
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
-    # get the output from model
-    outputs = model_4bit.generate(**inputs, max_new_tokens=128)
-    generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-    answer_message = extract_reply(generated_text)
-    # Garbage collection around CUDA
-    if torch.cuda.is_available():
-        print("GPU Garbage collection.....")
-        torch.cuda.empty_cache()
+    # Calculate the number of mini-batches
+    num_batches = (inputs.input_ids.size(1) - 1) // batch_size
+
+    # Process in mini-batches with gradient accumulation
+    with torch.no_grad():
+        for i in range(0, inputs.input_ids.size(1) - 1, batch_size * gradient_accumulation_steps):
+            batch_inputs = {
+                k: v[:, i:i + batch_size * gradient_accumulation_steps] for k, v in inputs.items()
+            }
+
+            for j in range(0, batch_size * gradient_accumulation_steps, batch_size):
+                batch_inputs = {
+                    k: v[:, j:j + batch_size] for k, v in inputs.items()
+                }
+                # get the output from model
+                outputs = model_4bit.generate(**batch_inputs, max_new_tokens=128)
+                generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+                answer_message = extract_reply(generated_text)
+                print(answer_message)  # Or store the answer_message in a list, etc.
+                # Clear intermediate variables to free up GPU memory
+                del outputs, generated_text
+                torch.cuda.empty_cache()
+
     return answer_message
+
+
+# def execute(user_input, knowledge_base, docs, embeddings, system_prompt):
+#     # Load the language model only when needed during inference
+#     model_id = "EleutherAI/gpt-neox-20b"
+#     bnb_config = BitsAndBytesConfig(
+#         load_in_4bit=True,
+#         bnb_4bit_use_double_quant=True,
+#         bnb_4bit_quant_type="nf4",
+#         bnb_4bit_compute_dtype=torch.bfloat16
+#     )
+#     device = "cuda:0"
+#
+#     # tokenizer load
+#     tokenizer = AutoTokenizer.from_pretrained(model_id)
+#     # actual model load..
+#     model_4bit = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb_config, device_map="auto")
+#
+#     # get the context from knowledgebase..
+#     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+#     context = ""
+#     for doc in docs:
+#         if hasattr(doc, 'page_content'):
+#             page_content = doc.page_content
+#             context += page_content + " "  # Append the page_content to the text
+#
+#     # create prompt including context and user input..
+#     prompt = f"{system_prompt} " + context + "\n ------ \n Question: \n" + user_input + "\n Answer:"
+#     inputs = tokenizer(prompt, return_tensors="pt").to(device)
+#     # get the output from model
+#     outputs = model_4bit.generate(**inputs, max_new_tokens=128)
+#     generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+#
+#     answer_message = extract_reply(generated_text)
+#     # Garbage collection around CUDA
+#     if torch.cuda.is_available():
+#         print("GPU Garbage collection.....")
+#         torch.cuda.empty_cache()
+#     return answer_message
 
 if __name__ == "__main__":
     knowledge_base, docs, embeddings, system_prompt = run_model()
