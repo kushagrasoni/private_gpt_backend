@@ -66,8 +66,8 @@ def run_model():
 
 def similarity_search(knowledge_base, user_input, k=3):
     # Perform similarity search using the knowledge_base
-    query_embeddings = knowledge_base.embed_query(user_input)
-    results = knowledge_base.query(query_embeddings, top_k=k)
+    query_embedding = knowledge_base.embed([user_input])[0]
+    results = knowledge_base.query(query_embedding, top_k=k)
 
     return results
 
