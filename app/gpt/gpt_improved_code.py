@@ -3,7 +3,7 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from langchain.vectorstores import Qdrant
 from langchain.embeddings import SentenceTransformerEmbeddings
-from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_loaders import TextLoader, PyPDFLoader, UnstructuredEmailLoader, UnstructuredPowerPointLoader, \
     Docx2txtLoader
 
@@ -64,6 +64,13 @@ def run_model():
     system_prompt = "Please analyze below context and give detailed answer. \n Context : \n"
     return knowledge_base, docs, embeddings, system_prompt
 
+def similarity_search(knowledge_base, user_input, k=3):
+    # Perform similarity search using the knowledge_base
+    query_embeddings = knowledge_base.embed_query(user_input)
+    results = knowledge_base.query(query_embeddings, top_k=k)
+
+    return results
+
 def extract_reply(s):
     # Find the positions of the last occurrence of "<start>" and "<end>"
     start = "Answer:"
@@ -81,8 +88,7 @@ def extract_reply(s):
     else:
         return None
 
-
-def execute(user_input, docs, embeddings, system_prompt, batch_size=4, gradient_accumulation_steps=4):
+def execute(user_input, knowledge_base, docs, embeddings, system_prompt, batch_size=4, gradient_accumulation_steps=4):
     # Load the language model only when needed during inference
     model_id = "EleutherAI/gpt-neox-20b"
     bnb_config = BitsAndBytesConfig(
@@ -98,15 +104,17 @@ def execute(user_input, docs, embeddings, system_prompt, batch_size=4, gradient_
     model_4bit = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb_config, device_map="auto")
     model_4bit.eval()
 
-    # get the context from knowledgebase..
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    # Perform similarity search to get context documents
+    context_docs = similarity_search(knowledge_base, user_input, k=3)
+
+    # Create the context from the retrieved documents
     context = ""
-    for doc in docs:
+    for doc in context_docs:
         if hasattr(doc, 'page_content'):
             page_content = doc.page_content
-            context += page_content + " "  # Append the page_content to the text
+            context += page_content + " "
 
-    # create prompt including context and user input..
+    # Create prompt including context and user input
     prompt = f"{system_prompt} " + context + "\n ------ \n Question: \n" + user_input + "\n Answer:"
     inputs = tokenizer(prompt, return_tensors="pt")
 
@@ -135,46 +143,6 @@ def execute(user_input, docs, embeddings, system_prompt, batch_size=4, gradient_
                 torch.cuda.empty_cache()
 
     return answer_message
-
-
-
-# def execute(user_input, knowledge_base, docs, embeddings, system_prompt):
-#     # Load the language model only when needed during inference
-#     model_id = "EleutherAI/gpt-neox-20b"
-#     bnb_config = BitsAndBytesConfig(
-#         load_in_4bit=True,
-#         bnb_4bit_use_double_quant=True,
-#         bnb_4bit_quant_type="nf4",
-#         bnb_4bit_compute_dtype=torch.bfloat16
-#     )
-#     device = "cuda:0"
-#
-#     # tokenizer load
-#     tokenizer = AutoTokenizer.from_pretrained(model_id)
-#     # actual model load..
-#     model_4bit = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb_config, device_map="auto")
-#
-#     # get the context from knowledgebase..
-#     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-#     context = ""
-#     for doc in docs:
-#         if hasattr(doc, 'page_content'):
-#             page_content = doc.page_content
-#             context += page_content + " "  # Append the page_content to the text
-#
-#     # create prompt including context and user input..
-#     prompt = f"{system_prompt} " + context + "\n ------ \n Question: \n" + user_input + "\n Answer:"
-#     inputs = tokenizer(prompt, return_tensors="pt").to(device)
-#     # get the output from model
-#     outputs = model_4bit.generate(**inputs, max_new_tokens=128)
-#     generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-#
-#     answer_message = extract_reply(generated_text)
-#     # Garbage collection around CUDA
-#     if torch.cuda.is_available():
-#         print("GPU Garbage collection.....")
-#         torch.cuda.empty_cache()
-#     return answer_message
 
 if __name__ == "__main__":
     knowledge_base, docs, embeddings, system_prompt = run_model()
