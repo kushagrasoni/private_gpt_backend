@@ -21,11 +21,20 @@ cd ~
 ls -ltr
 sudo apt install python3.11-venv
 python3.11 -m venv venv311_pvt_gpt
+
+
+# Activate Python3.11 Virtual Environment
 source venv311_pvt_gpt/bin/activate
 which pip
-pip install fastapi uvicorn
+
+# Install Dependencies
+pip install -U fastapi -U uvicorn
 pip install -U bitsandbytes -U git+https://github.com/huggingface/transformers.git
 pip install -U git+https://github.com/huggingface/peft.git -U git+https://github.com/huggingface/accelerate.git langchain
 pip install -U sentence_transformers -U pypdf -U qdrant-client
 ls -ltr
+
+# Git Clone the private_gpt_backend project
 git clone https://github.com/kushagrasoni/private_gpt_backend.git
+
+
