@@ -91,13 +91,11 @@ def execute(user_input, docs, embeddings, system_prompt, batch_size=4, gradient_
         bnb_4bit_quant_type="nf4",
         bnb_4bit_compute_dtype=torch.bfloat16
     )
-    device = "cuda:0"
 
     # tokenizer load
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     # actual model load..
     model_4bit = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb_config, device_map="auto")
-    model_4bit.to(device)
     model_4bit.eval()
 
     # get the context from knowledgebase..
@@ -110,7 +108,7 @@ def execute(user_input, docs, embeddings, system_prompt, batch_size=4, gradient_
 
     # create prompt including context and user input..
     prompt = f"{system_prompt} " + context + "\n ------ \n Question: \n" + user_input + "\n Answer:"
-    inputs = tokenizer(prompt, return_tensors="pt").to(device)
+    inputs = tokenizer(prompt, return_tensors="pt")
 
     # Calculate the number of mini-batches
     num_batches = (inputs.input_ids.size(1) - 1) // batch_size
@@ -137,6 +135,7 @@ def execute(user_input, docs, embeddings, system_prompt, batch_size=4, gradient_
                 torch.cuda.empty_cache()
 
     return answer_message
+
 
 
 # def execute(user_input, knowledge_base, docs, embeddings, system_prompt):
