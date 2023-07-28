@@ -134,6 +134,11 @@ def execute(user_input, knowledge_base, system_prompt, tokenizer, model_4bit, de
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
     # get the output from model
     outputs = model_4bit.generate(**inputs, max_new_tokens=128)
+
+    # Garbage collection around CUDA
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
     generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
     answer_message = extract_reply(generated_text)

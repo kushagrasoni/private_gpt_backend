@@ -43,13 +43,6 @@ def run_model():
 
     # Other configuration parameters
     embedding_model_name = "all-MiniLM-L6-v2"
-    model_id = "EleutherAI/gpt-neox-20b"
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_use_double_quant=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.bfloat16
-    )
 
     # Load documents from the input folder
     doc_loader = DocumentLoader(root_dir)
@@ -58,20 +51,10 @@ def run_model():
     # Embeddings for similarity search
     embeddings = SentenceTransformerEmbeddings(model_name=embedding_model_name)
 
-    # Create in-memory Qdrant instance
-    knowledge_base = Qdrant.from_documents(
-        docs,
-        embeddings,
-        location=":memory:",
-        collection_name="doc_chunks",
-    )
-
-    # Tokenizer and model loading
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
-    model_4bit = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb_config, device_map="auto")
+    # No need to load the language model here, do it on-demand during inference
 
     system_prompt = "Please analyze below context and give detailed answer. \n Context : \n"
-    return knowledge_base, system_prompt, tokenizer, model_4bit
+    return docs, embeddings, system_prompt
 
 def extract_reply(s):
     print('extract_reply')
@@ -93,6 +76,22 @@ def extract_reply(s):
     # return s
 
 def execute(user_input, knowledge_base, system_prompt, tokenizer, model_4bit):
+    # Load the language model only when needed during inference
+    model_id = "EleutherAI/gpt-neox-20b"
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.bfloat16
+    )
+    device = "cuda:0"
+
+    # tokenizer load
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    # actual model load..
+    model_4bit = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb_config, device_map="auto")
+
+
     print('extract_reply')
     # get the context from knowledgebase..
     docs = knowledge_base.similarity_search(user_input, k=3)
@@ -107,6 +106,11 @@ def execute(user_input, knowledge_base, system_prompt, tokenizer, model_4bit):
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
     # get the output from model
     outputs = model_4bit.generate(**inputs, max_new_tokens=128)
+
+    # Garbage collection around CUDA
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
     generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
     answer_message = extract_reply(generated_text)
