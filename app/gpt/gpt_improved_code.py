@@ -107,7 +107,7 @@ def extract_reply(s):
     # return s
 
 
-def execute(user_input, knowledge_base, system_prompt, tokenizer, model_4bit, device):
+def execute(user_input, knowledge_base, system_prompt, tokenizer, model_4bit, device = "cuda:0"):
     print('extract_reply')
     # get the context from knowledgebase..
     docs = knowledge_base.similarity_search(user_input, k=3)
