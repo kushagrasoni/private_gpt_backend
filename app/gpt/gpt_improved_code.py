@@ -78,6 +78,14 @@ def run_model():
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     model_4bit = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb_config, device_map="auto")
 
+    # Print GPU memory usage after model loading
+    if torch.cuda.is_available():
+        print("GPU Memory After Model Loading:", torch.cuda.memory_allocated(device=device))
+
+    # Garbage collection around CUDA
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
     # Print GPU memory usage before starting inference
     if torch.cuda.is_available():
         print("GPU Memory Before Inference:", torch.cuda.memory_allocated(device=device))
@@ -131,10 +139,6 @@ def execute(user_input, knowledge_base, system_prompt, tokenizer, model_4bit, de
 
     answer_message = extract_reply(generated_text)
     # answer_message = extract_reply(user_input)
-
-    # Print GPU memory usage after model loading
-    if torch.cuda.is_available():
-        print("GPU Memory After Model Loading:", torch.cuda.memory_allocated(device=device))
 
     # Garbage collection around CUDA
     if torch.cuda.is_available():
